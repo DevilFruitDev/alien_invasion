@@ -1,106 +1,141 @@
-import sys 
-import pygame 
+import sys
+import pygame
 from settings import Settings
 from ship import Ship
 from bullet import Bullet
+from enemy import Enemy
 
 
 class AlienInvasion:
-	"""overall class to manage game assets and behaviors"""
-	def __init__(self):
-		"""intialize the game and create resources"""
-		pygame.init()
-		self.settings = Settings()
-		self.screen = pygame.display.set_mode((
- self.settings.screen_width, self.settings.screen_height))
-		#self.screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-		#self.settings.screen_width = self.screen.get_rect().width
-		#self.settings.screen_height = self.screen.get_rect().height
-		pygame.display.set_caption("Alien Invasion")
-		self.ship = Ship(self)
-		self.bullets = pygame.sprite.Group()
+    """Overall class to manage game assets and behaviors."""
+    def __init__(self):
+        """Initialize the game and create game resources."""
+        pygame.init()
+        self.settings = Settings()
+        self.screen = pygame.display.set_mode((
+            self.settings.screen_width, self.settings.screen_height))
+        pygame.display.set_caption("Alien Invasion")
+        
+        self.ship = Ship(self)
+        self.bullets = pygame.sprite.Group()
+        self.enemies = pygame.sprite.Group()
+
+        # Create the fleet of enemies
+        self._create_fleet()
+
+    def run_game(self):
+        """Start the main loop for the game."""
+        while True:
+            self._check_events()
+            self.ship.update()
+            self._update_bullets()
+            self._update_enemies()
+            self._update_screen()
+
+    def _update_bullets(self):
+        """Update the position of the bullets and get rid of the old ones."""
+        self.bullets.update()
+
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+
+        collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
+        if collisions:
+            print("Bullet hit enemy!")
+
+    def _update_enemies(self):
+        """Update the position of all enemies in the fleet."""
+        self.enemies.update()
+        self._check_fleet_edges()
+
+    def _check_fleet_edges(self):
+        """Respond if any enemies have reached an edge."""
+        for enemy in self.enemies.sprites():
+            if enemy.check_edges():
+                self._change_fleet_direction()
+                break
+
+    def _change_fleet_direction(self):
+        """Drop the entire fleet and change their direction."""
+        for enemy in self.enemies.sprites():
+            enemy.rect.y += self.settings.enemy_drop_speed
+        self.settings.enemy_direction *= -1  # Reverse direction
+        print("Fleet changed direction!")
+
+    def _check_events(self):
+        """Respond to keypresses and mouse events."""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                self._check_keydown_events(event)
+            elif event.type == pygame.KEYUP:
+                self._check_keyup_events(event)
+
+    def _check_keydown_events(self, event):
+        """Respond to key presses."""
+        if event.key == pygame.K_RIGHT:
+            self.ship.moving_right = True
+        elif event.key == pygame.K_LEFT:
+            self.ship.moving_left = True
+        elif event.key == pygame.K_SPACE:
+            self._fire_bullet()
+        elif event.key == pygame.K_q:
+            sys.exit()
+
+    def _check_keyup_events(self, event):
+        """Respond to key releases."""
+        if event.key == pygame.K_RIGHT:
+            self.ship.moving_right = False
+        elif event.key == pygame.K_LEFT:
+            self.ship.moving_left = False
+
+    def _fire_bullet(self):
+        """Create a new bullet and add it to the bullets group."""
+        if len(self.bullets) < self.settings.bullets_allowed:
+            new_bullet = Bullet(self.screen, self.ship)
+            self.bullets.add(new_bullet)
+
+    def _create_fleet(self):
+        """Create a fleet of enemies."""
+        # Calculate the number of enemies in a row and rows of enemies
+        enemy = Enemy(self)
+        enemy_width, enemy_height = enemy.rect.size
+        available_space_x = self.settings.screen_width - (1.5 * enemy_width)
+        number_enemies_x = int(available_space_x // (1.5 * enemy_width))
+
+        ship_height = self.ship.rect.height
+        available_space_y = (self.settings.screen_height - (2 * enemy_height) - ship_height)
+        number_rows = int(available_space_y // (1.5 * enemy_height))
+
+        # Create the full fleet of enemies
+        for row_number in range(number_rows):
+            for enemy_number in range(number_enemies_x):
+                self._create_enemy(enemy_number, row_number)
+
+    def _create_enemy(self, enemy_number, row_number):
+        """Create an enemy and place it in the row."""
+        enemy = Enemy(self)
+        enemy_width = enemy.rect.width
+        enemy.x = enemy_width + 1.5 * enemy_width * enemy_number
+        enemy.rect.x = enemy.x
+        # Position the enemies closer to the top of the screen
+        enemy.rect.y = enemy.rect.height + (1.5 * enemy.rect.height * row_number) - 50  # Adjust -50 as needed
+        self.enemies.add(enemy)
+        #print(f"Created enemy at ({enemy.rect.x}, {enemy.rect.y})")
+
+    def _update_screen(self):
+        """Update images on the screen and flip to the new screen."""
+        self.screen.fill(self.settings.bg_color)
+        self.ship.blitme()
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
+        self.enemies.draw(self.screen)
+
+        pygame.display.flip()
 
 
-	def run_game(self):
-		"""start the main loop of the game"""
-		while True:
-			self._check_events()
-			self._update_screen()
-			self.ship.update()
-			self._update_bullets() 
-		
-	def _update_bullets(self):
-		"""update the position of the bullet and get rid of the old ones"""
-		#update bullet position 
-		self.bullets.update()
-		#get rid of the bullets that have disappeared 
-		for bullet in self.bullets.copy():
-			if bullet.rect.bottom <=0:
-				self.bullet.remove(bullet)
-		print(len(self.bullets))
-		
-	def _check_events(self):
-		"""Respond to keypresses and mouse events"""
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				sys.exit()
-			elif event.type == pygame.KEYDOWN:
-				self._check_keydown_events(event)				
-			elif event.type == pygame.KEYUP:
-				self._check_keyup_events(event)
-
-	def _check_keydown_events(self, event):
-		"""respond to key presses"""
-		if event.key == pygame.K_RIGHT:
-			self.ship.moving_right = True
-		elif event.key == pygame.K_LEFT:
-			self.ship.moving_left = True
-		#elif event.key == pygame.K_SPACE:
-		#	self._fire_bullet =True
-
-		#if event.key == pygame.K_UP:
-		#	self.ship.moving_up = True
-		#elif event.key == pygame.K_DOWN:
-		#	self.ship.moving_down = True
-		
-		elif event.key == pygame.K_q:
-			sys.exit()
-		elif event.key == pygame.K_SPACE:
-			self._fire_bullet()
-
-
-	def _check_keyup_events(self, event):
-		"""respond to key releases"""
-		if event.key == pygame.K_RIGHT:
-			self.ship.moving_right = False
-		elif event.key == pygame.K_LEFT:
-			self.ship.moving_left = False
-		#elif event.key == pygame.K_SPACE:
-			#self._fire_bullet = False
-
-		#if event.key == pygame.K_UP:
-		#	self.ship.moving_up = False
-		#elif event.key == pygame.K_DOWN:
-		#	self.ship.moving_down = False
-
-	def _fire_bullet(self):
-		"""create a new bullet and add it to the bullets group"""
-		if len(self.bullets) < self.settings.bullets_allowed:
-			new_bullet = Bullet(self)
-			self.bullets.add(new_bullet)
-
-
-	def _update_screen(self):
-		"""update the image on your screen"""
-		self.screen.fill(self.settings.bg_color)
-		self.ship.blitme()
-		for bullet in self.bullets.sprites():
-			bullet.draw_bullet()
-
-		pygame.display.flip()
-
-if __name__ == "__main__":
-	#make a game instance and run the game
-	ai = AlienInvasion()
-	ai.run_game()
-	
+if __name__ == '__main__':
+    ai = AlienInvasion()
+    ai.run_game()
