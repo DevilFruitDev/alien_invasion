@@ -1,19 +1,24 @@
 class Settings: 
-	"""A class to store all the settings for alien invasion"""
+    """A class to store all the settings for Alien Invasion"""
 
-	def __init__(self):
-		"""initialize the game´s settings"""
-		#screen settings
-		self.screen_width = 800
-		self.screen_height = 600
-		self.bg_color= (230,230,230)
+    def __init__(self):
+        """Initialize the game's settings."""
+        # Screen settings
+        self.screen_width = 800
+        self.screen_height = 600
+        self.bg_color = (230, 230, 230)
 
-		#Ship Settings
-		self.ship_speed = 1.5
+        # Ship settings
+        self.ship_speed = 1.5
 
-		#bullets settings
-		self.bullet_speed  =1.0
-		self.bullet_width = 3
-		self.bullet_height = 15
-		self.bullet_color =(60,60,60)
-		self.bullets_allowed = 3
+        # Bullet settings
+        self.bullet_speed = 1.0
+        self.bullet_width = 3
+        self.bullet_height = 15
+        self.bullet_color = (60, 60, 60)
+        self.bullets_allowed = 3
+
+        # Enemy settings
+        self.enemy_speed = 1.0
+        self.enemy_direction = 1  # 1 represents right; -1 represents left
+        self.enemy_drop_speed = 10
