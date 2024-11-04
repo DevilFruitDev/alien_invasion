@@ -12,9 +12,12 @@ Installation
 How to Play
 Controls
 Power-Ups and Projectiles
+Power-Ups
+Projectile Types
 Game Settings
 Future Improvements
 Credits
+A Personal Note
 
 
 
