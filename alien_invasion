@@ -1,27 +1,30 @@
-import sys
 import pygame
-from settings import Settings
+import sys
+from settings import Settings  # Import Settings instead of SCREEN
+from game_state import GameStateManager
+from ui import UI
 from ship import Ship
 from bullet import Bullet
 from enemy import Enemy
-
+from powerup import PowerUp
 
 class AlienInvasion:
-    """Overall class to manage game assets and behaviors."""
     def __init__(self):
         """Initialize the game and create game resources."""
         pygame.init()
         self.settings = Settings()
-        self.screen = pygame.display.set_mode((
-            self.settings.screen_width, self.settings.screen_height))
+        self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
         pygame.display.set_caption("Alien Invasion")
         
+        # Initialize UI and other game elements
+        self.ui = UI()
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
+        self.powerups = pygame.sprite.Group()  # Add this line to initialize powerups
 
-        # Create the fleet of enemies
         self._create_fleet()
+
 
     def run_game(self):
         """Start the main loop for the game."""
@@ -31,6 +34,13 @@ class AlienInvasion:
             self._update_bullets()
             self._update_enemies()
             self._update_screen()
+
+
+    def _spawn_powerup(self):
+        """Spawn a power-up in the game."""
+        powerup = PowerUp(400, 100, self.screen)  # Pass self.screen here
+        self.powerups.add(powerup)
+
 
     def _update_bullets(self):
         """Update the position of the bullets and get rid of the old ones."""
@@ -42,7 +52,8 @@ class AlienInvasion:
 
         collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
         if collisions:
-            print("Bullet hit enemy!")
+            for enemies_hit in collisions.values():
+                self.ui.update_score(len(enemies_hit) * 10)  # Example: 10 points per enemy
 
     def _update_enemies(self):
         """Update the position of all enemies in the fleet."""
@@ -132,8 +143,14 @@ class AlienInvasion:
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
         self.enemies.draw(self.screen)
+        
+        # Draw each power-up 
+        for powerup in self.powerups.sprites():
+            powerup.draw()
 
+        self.ui.draw(self.screen)  # Draw UI elements like score and lives
         pygame.display.flip()
+
 
 
 if __name__ == '__main__':
