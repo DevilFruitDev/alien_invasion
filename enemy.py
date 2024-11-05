@@ -1,3 +1,4 @@
+
 import pygame
 from pygame.sprite import Sprite
 
@@ -11,7 +12,7 @@ class Enemy(Sprite):
         self.settings = ai_game.settings
 
         # Load the enemy image and resize it
-        self.image = pygame.image.load('Flyingsaucer.png')
+        self.image = pygame.image.load('')
         self.image = pygame.transform.scale(self.image, (50, 50))  # Adjust size as needed
         self.rect = self.image.get_rect()
 
