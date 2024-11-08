@@ -1,3 +1,5 @@
+import random
+from enemy_bullet import EnemyBullet  # Ensure this import is at the top
 import pygame
 import sys
 from settings import Settings  # Import Settings instead of SCREEN
@@ -22,9 +24,9 @@ class AlienInvasion:
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()  # Add this line to initialize powerups
+        self.enemy_bullets = pygame.sprite.Group()  # Add this line in __init__
 
         self._create_fleet()
-
 
     def run_game(self):
         """Start the main loop for the game."""
@@ -33,13 +35,60 @@ class AlienInvasion:
             self.ship.update()
             self._update_bullets()
             self._update_enemies()
+            
+            # Add the call to spawn enemy bullets at intervals
+            self._fire_enemy_bullet()
+            
+            # Update and check collisions with enemy bullets
+            self.enemy_bullets.update()  # Update the position of enemy bullets
+
+            if pygame.sprite.spritecollideany(self.ship, self.enemy_bullets):
+                self.ui.update_lives(-1)  # Decrease the ship's lives by 1
+                if self.ui.lives <= 0:
+                    print("Game Over!")
+                    pygame.quit()
+                    sys.exit()
+
+            # Remove enemy bullets that move off the bottom of the screen
+            for bullet in self.enemy_bullets.copy():
+                if bullet.rect.top >= self.settings.screen_height:
+                    self.enemy_bullets.remove(bullet)
+
             self._update_screen()
 
+    def _fire_enemy_bullet(self):
+        """Randomly fire a bullet from an enemy."""
+        if self.enemies and random.randint(1, 100) == 10:  # Adjust probability for firing
+            firing_enemy = random.choice(self.enemies.sprites())
+            new_bullet = EnemyBullet(firing_enemy.rect.centerx, firing_enemy.rect.bottom, self.screen)
+            self.enemy_bullets.add(new_bullet)
+
+    def _update_screen(self):
+        """Update images on the screen and flip to the new screen."""
+        self.screen.fill(self.settings.bg_color)
+        self.ship.blitme()
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
+        self.enemies.draw(self.screen)
+        
+        # Draw each enemy bullet
+        for bullet in self.enemy_bullets.sprites():
+            bullet.draw_bullet()
+        
+        # Draw each power-up 
+        for powerup in self.powerups.sprites():
+            powerup.draw()
+
+        self.ui.draw(self.screen)  # Draw UI elements like score and lives
+        pygame.display.flip()
+
+  #update completed till today. 
 
     def _spawn_powerup(self):
         """Spawn a power-up in the game."""
         powerup = PowerUp(400, 100, self.screen)  # Pass self.screen here
         self.powerups.add(powerup)
+
 
 
     def _update_bullets(self):
@@ -72,7 +121,7 @@ class AlienInvasion:
         for enemy in self.enemies.sprites():
             enemy.rect.y += self.settings.enemy_drop_speed
         self.settings.enemy_direction *= -1  # Reverse direction
-        print("Fleet changed direction!")
+        #print("Fleet changed direction!")
 
     def _check_events(self):
         """Respond to keypresses and mouse events."""
@@ -83,6 +132,11 @@ class AlienInvasion:
                 self._check_keydown_events(event)
             elif event.type == pygame.KEYUP:
                 self._check_keyup_events(event)
+
+    def _increase_speed(self):
+        """Increase the speed of the fleet after each wave or significant event."""
+        self.settings.enemy_speed *= 1.1  # Adjust this multiplier as needed for difficulty
+
 
     def _check_keydown_events(self, event):
         """Respond to key presses."""
@@ -135,21 +189,6 @@ class AlienInvasion:
         enemy.rect.y = enemy.rect.height + (1.5 * enemy.rect.height * row_number) - 50  # Adjust -50 as needed
         self.enemies.add(enemy)
         #print(f"Created enemy at ({enemy.rect.x}, {enemy.rect.y})")
-
-    def _update_screen(self):
-        """Update images on the screen and flip to the new screen."""
-        self.screen.fill(self.settings.bg_color)
-        self.ship.blitme()
-        for bullet in self.bullets.sprites():
-            bullet.draw_bullet()
-        self.enemies.draw(self.screen)
-        
-        # Draw each power-up 
-        for powerup in self.powerups.sprites():
-            powerup.draw()
-
-        self.ui.draw(self.screen)  # Draw UI elements like score and lives
-        pygame.display.flip()
 
 
 
