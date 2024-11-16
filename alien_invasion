@@ -29,6 +29,8 @@ class AlienInvasion:
 
         # Add this line to create the fleet of enemies when the game starts
         self._create_fleet()
+        
+
 
 
     def run_game(self):
@@ -210,11 +212,12 @@ class AlienInvasion:
         self._check_fleet_edges()
 
     def _check_fleet_edges(self):
-        """Respond if any enemies have reached an edge."""
+        """Respond if any Grunts have reached an edge."""
         for enemy in self.enemies.sprites():
-            if enemy.check_edges() and enemy.enemy_type == 'grunt':
+            if enemy.enemy_type == 'grunt' and enemy.check_edges():
                 self._change_fleet_direction()
                 break
+
 
 
     def _change_fleet_direction(self):
@@ -267,7 +270,7 @@ class AlienInvasion:
     def _create_fleet(self):
         """Create a fleet of enemies."""
         # Calculate the number of enemies in a row and rows of enemies
-        enemy = Enemy(self)
+        enemy = Enemy(self, 'grunt')  # Temporary instance to get dimensions
         enemy_width, enemy_height = enemy.rect.size
         available_space_x = self.settings.screen_width - (1.5 * enemy_width)
         number_enemies_x = int(available_space_x // (1.5 * enemy_width))
@@ -280,17 +283,25 @@ class AlienInvasion:
         for row_number in range(number_rows):
             for enemy_number in range(number_enemies_x):
                 self._create_enemy(enemy_number, row_number)
+                # Add the print statement here
+                print(f"Row: {row_number}, Enemy: {enemy_number}")
+                print(f"DEBUG: Total enemies in fleet: {len(self.enemies)}")
+
+
 
     def _create_enemy(self, enemy_number, row_number):
         """Create an enemy and place it in the row."""
-        # Randomly assign a type to the enemy
         enemy_type = random.choice(['grunt', 'scout', 'bruiser'])
-
-        # Create the enemy using the specified type
+        print(f"DEBUG: Creating enemy of type {enemy_type} at Row: {row_number}, Enemy: {enemy_number}")
         enemy = Enemy(
-            ai_game=self,  # Pass the game instance
-            enemy_type=enemy_type  # Specify the type
+            ai_game=self,
+            enemy_type=enemy_type
         )
+        # Position the enemy
+        enemy.rect.x = 50 + enemy_number * (enemy.rect.width + 10)
+        enemy.rect.y = 50 + row_number * (enemy.rect.height + 10)
+        self.enemies.add(enemy)
+
 
         # Position the enemy based on its number and row
         enemy.rect.x = 50 + enemy_number * (enemy.rect.width + 10)
@@ -299,8 +310,7 @@ class AlienInvasion:
         # Add the enemy to the group
         self.enemies.add(enemy)
 
-
-
+        print(f"Created {enemy_type} at ({enemy.rect.x}, {enemy.rect.y})")
 
 if __name__ == '__main__':
     ai = AlienInvasion()
