@@ -212,16 +212,18 @@ class AlienInvasion:
     def _check_fleet_edges(self):
         """Respond if any enemies have reached an edge."""
         for enemy in self.enemies.sprites():
-            if enemy.check_edges():
+            if enemy.check_edges() and enemy.enemy_type == 'grunt':
                 self._change_fleet_direction()
                 break
+
 
     def _change_fleet_direction(self):
         """Drop the entire fleet and change their direction."""
         for enemy in self.enemies.sprites():
-            enemy.rect.y += self.settings.enemy_drop_speed
-        self.settings.enemy_direction *= -1  # Reverse direction
-        #print("Fleet changed direction!")
+            if enemy.enemy_type == 'grunt':  # Only affect Grunts
+                enemy.rect.y += 20
+        self.settings.enemy_direction *= -1
+
 
     def _check_events(self):
         """Respond to keypresses and mouse events."""
@@ -281,14 +283,22 @@ class AlienInvasion:
 
     def _create_enemy(self, enemy_number, row_number):
         """Create an enemy and place it in the row."""
-        enemy = Enemy(self)
-        enemy_width = enemy.rect.width
-        enemy.x = enemy_width + 1.5 * enemy_width * enemy_number
-        enemy.rect.x = enemy.x
-        # Position the enemies closer to the top of the screen
-        enemy.rect.y = enemy.rect.height + (1.5 * enemy.rect.height * row_number) - 50  # Adjust -50 as needed
+        # Randomly assign a type to the enemy
+        enemy_type = random.choice(['grunt', 'scout', 'bruiser'])
+
+        # Create the enemy using the specified type
+        enemy = Enemy(
+            ai_game=self,  # Pass the game instance
+            enemy_type=enemy_type  # Specify the type
+        )
+
+        # Position the enemy based on its number and row
+        enemy.rect.x = 50 + enemy_number * (enemy.rect.width + 10)
+        enemy.rect.y = 50 + row_number * (enemy.rect.height + 10)
+
+        # Add the enemy to the group
         self.enemies.add(enemy)
-        #print(f"Created enemy at ({enemy.rect.x}, {enemy.rect.y})")
+
 
 
 
