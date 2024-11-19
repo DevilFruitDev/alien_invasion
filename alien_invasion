@@ -20,6 +20,8 @@ class AlienInvasion:
         # Initialize game elements
         self.ui = UI()
         self.ship = Ship(self)
+        self.clock = pygame.time.Clock()
+        self.start_ticks = pygame.time.get_ticks()  # stores the initial ticks
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
@@ -31,21 +33,24 @@ class AlienInvasion:
         self._create_fleet()
         
 
-
-
     def run_game(self):
         while True:
+            # Calculate the time elapsed since the game started
+            seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000  # convert to seconds
             if not self.game_over:
                 self._check_events()
-                # Run game updates and check collisions
                 self.ship.update()
                 self._update_bullets()
                 self._update_enemies()
                 self.powerups.update()
                 self._check_collisions()
                 self._update_screen()
+                self.clock.tick(self.settings.fps)  # This limits the frame rate and tracks time
+                self.ui.show_time(self.screen, seconds)  # Display time on the screen
             else:
                 self._display_game_over_screen()
+            pygame.display.flip()  # Ensure the screen is updated
+
 
     def _display_game_over_screen(self):
         """Display Game Over screen with options to restart or quit."""
