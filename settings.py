@@ -8,6 +8,9 @@ class Settings:
         self.screen_height = 600
         self.bg_color = (230, 230, 230)
 
+        #Game FPS
+        self.fps = 30 #setting the frame rate. 
+
         # Ship settings
         self.ship_speed = 1.5
 
@@ -21,4 +24,4 @@ class Settings:
         # Enemy settings
         self.enemy_speed = 1.0
         self.enemy_direction = 1  # 1 represents right; -1 represents left
-        self.enemy_drop_speed = 10
+        self.enemy_drop_speed = 10 
