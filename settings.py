@@ -8,6 +8,7 @@ class Settings:
         self.screen_height = 600
         self.bg_color = (230, 230, 230)
 
+        self.debug_mode = False  # Debug mode is off by default
         #Game FPS
         self.fps = 30 #setting the frame rate. 
 
