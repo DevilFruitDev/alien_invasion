@@ -1,13 +1,12 @@
 import random
-from enemy_bullet import EnemyBullet  # Ensure this import is at the top
 import pygame
 import sys
-from settings import Settings  # Import Settings instead of SCREEN
-from game_state import GameStateManager
+from settings import Settings
 from ui import UI
 from ship import Ship
 from bullet import Bullet
 from enemy import Enemy
+from enemy_bullet import EnemyBullet
 from powerup import PowerUp
 
 class AlienInvasion:
@@ -21,78 +20,106 @@ class AlienInvasion:
         self.ui = UI()
         self.ship = Ship(self)
         self.clock = pygame.time.Clock()
-        self.start_ticks = pygame.time.get_ticks()  # stores the initial ticks
+        self.start_ticks = pygame.time.get_ticks()
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
         self.enemy_bullets = pygame.sprite.Group()
 
-        self.game_over = False  # Flag to handle game over state
+        self.debug_mode = False  # Debug mode state
+        self.game_over = False
 
-        # Add this line to create the fleet of enemies when the game starts
         self._create_fleet()
-        
 
     def run_game(self):
         while True:
-            # Calculate the time elapsed since the game started
-            seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000  # convert to seconds
             if not self.game_over:
-                self._check_events()
-                self.ship.update()
-                self._update_bullets()
-                self._update_enemies()
-                self.powerups.update()
-                self._check_collisions()
-                self._update_screen()
-                self.clock.tick(self.settings.fps)  # This limits the frame rate and tracks time
-                self.ui.show_time(self.screen, seconds)  # Display time on the screen
+                self._process_input()
+                self._update_game()
+                self._render()
             else:
                 self._display_game_over_screen()
-            pygame.display.flip()  # Ensure the screen is updated
+            pygame.display.flip()
 
+    def _process_input(self):
+        """ Handle all user inputs or events. """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                self._check_keydown_events(event)
+            elif event.type == pygame.KEYUP:
+                self._check_keyup_events(event)
+
+    def _update_game(self):
+        """ Update all game mechanics. """
+        seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000
+        self.ship.update()
+        self._update_bullets()
+        if not self.debug_mode:
+            self._update_enemies()
+        self.powerups.update()
+        self.enemy_bullets.update()
+        self._check_collisions()
+        self.ui.show_time(self.screen, seconds)
+        self.clock.tick(self.settings.fps)
+
+    def _render(self):
+        """ Render all game elements. """
+        self.screen.fill(self.settings.bg_color)
+        self.ship.blitme()
+        self.bullets.draw(self.screen)
+        self.enemies.draw(self.screen)
+        self.enemy_bullets.draw(self.screen)
+        self.powerups.draw(self.screen)
+        self.ui.draw(self.screen)
+
+    def toggle_debug_mode(self):
+        self.debug_mode = not self.debug_mode
+        if self.debug_mode:
+            self.enemies.empty()
+        else:
+            self._create_fleet()
+        print(f"Debug mode set to {self.debug_mode}")
 
     def _display_game_over_screen(self):
         """Display Game Over screen with options to restart or quit."""
-        self.screen.fill((0, 0, 0))  # Fill with black
+        self.screen.fill((0, 0, 0))
         font = pygame.font.Font(None, 74)
         text = font.render("Game Over", True, (255, 0, 0))
         self.screen.blit(text, (self.settings.screen_width // 2 - text.get_width() // 2,
                                 self.settings.screen_height // 3))
-
         font_small = pygame.font.Font(None, 36)
         restart_text = font_small.render("Press R to Restart or Q to Quit", True, (255, 255, 255))
         self.screen.blit(restart_text, (self.settings.screen_width // 2 - restart_text.get_width() // 2,
                                         self.settings.screen_height // 2))
-        pygame.display.flip()  # Update display
+        pygame.display.flip()
 
-        # Wait for player input on Game Over screen
         while self.game_over:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:  # Restart the game
+                elif event.type is pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
                         self._restart_game()
-                    elif event.key == pygame.K_q:  # Quit the game
+                    elif event.key == pygame.K_q:
                         pygame.quit()
                         sys.exit()
 
     def _restart_game(self):
         """Reset the game to start fresh."""
         self.game_over = False
-        self.ui = UI()  # Reset UI and other states
+        self.ui = UI()
         self.enemies.empty()
         self.bullets.empty()
         self.powerups.empty()
         self.enemy_bullets.empty()
         self._create_fleet()
-
-        # Reinitialize the ship and reset movement flags
-        self.ship = Ship(self)
+        self.ship = Ship(self)  # Reinitialize the ship and reset movement flags
         self.ship.moving_right = False
         self.ship.moving_left = False
+
 
 
 
@@ -212,9 +239,11 @@ class AlienInvasion:
                 self.ui.update_score(len(enemies_hit) * 10)  # Example: 10 points per enemy
 
     def _update_enemies(self):
-        """Update the position of all enemies in the fleet."""
-        self.enemies.update()
-        self._check_fleet_edges()
+        """Update the position of all enemies in the fleet, unless in debug mode."""
+        if not self.debug_mode:  # Only update enemies if not in debug mode
+            self.enemies.update()
+            self._check_fleet_edges()
+
 
     def _check_fleet_edges(self):
         """Respond if any Grunts have reached an edge."""
@@ -256,6 +285,8 @@ class AlienInvasion:
             self.ship.moving_left = True
         elif event.key == pygame.K_SPACE:
             self._fire_bullet()
+        elif event.key == pygame.K_d:
+            self.toggle_debug_mode()
         elif event.key == pygame.K_q:
             sys.exit()
 
@@ -273,16 +304,23 @@ class AlienInvasion:
             self.bullets.add(new_bullet)
 
     def _create_fleet(self):
-        """Create a fleet of enemies."""
-        # Calculate the number of enemies in a row and rows of enemies
-        enemy = Enemy(self, 'grunt')  # Temporary instance to get dimensions
-        enemy_width, enemy_height = enemy.rect.size
-        available_space_x = self.settings.screen_width - (1.5 * enemy_width)
-        number_enemies_x = int(available_space_x // (1.5 * enemy_width))
+        """Create a fleet of enemies only if not in debug mode."""
+        if not self.debug_mode:  # Check if debug mode is active
+            # Calculate the number of enemies in a row and rows of enemies
+            enemy = Enemy(self, 'grunt')  # Temporary instance to get dimensions
+            enemy_width, enemy_height = enemy.rect.size
+            available_space_x = self.settings.screen_width - (1.5 * enemy_width)
+            number_enemies_x = int(available_space_x // (1.5 * enemy_width))
 
-        ship_height = self.ship.rect.height
-        available_space_y = (self.settings.screen_height - (2 * enemy_height) - ship_height)
-        number_rows = int(available_space_y // (1.5 * enemy_height))
+            ship_height = self.ship.rect.height
+            available_space_y = (self.settings.screen_height - (2 * enemy_height) - ship_height)
+            number_rows = int(available_space_y // (1.5 * enemy_height))
+
+            # Create the full fleet of enemies
+            for row_number in range(number_rows):
+                for enemy_number in range(number_enemies_x):
+                    self._create_enemy(enemy_number, row_number)
+
 
         # Create the full fleet of enemies
         for row_number in range(number_rows):
