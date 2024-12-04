@@ -1,6 +1,6 @@
 import random
 import pygame
-import sys
+import  sys
 from settings import Settings
 from ui import UI
 from ship import Ship
@@ -72,15 +72,28 @@ class AlienInvasion:
         self.enemies.draw(self.screen)
         self.enemy_bullets.draw(self.screen)
         self.powerups.draw(self.screen)
-        self.ui.draw(self.screen)
+        self.ui.draw(self.screen, self.ship)  # Modified this line to pass the ship
 
     def toggle_debug_mode(self):
+        """Enhanced toggle debug mode with visual indicator."""
         self.debug_mode = not self.debug_mode
+        
+        # Visual feedback for debug mode
+        if self.debug_mode:
+            # Change ship color or add visual indicator
+            self.ship.image.fill((0, 255, 0), special_flags=pygame.BLEND_RGB_ADD)
+            print("Debug mode ON - Invulnerability activated")
+        else:
+            # Restore original ship appearance
+            self.ship.image = pygame.image.load('C:\\Users\\mhspi\\Desktop\\PYgame\\Game Assets\\ship.bmp.png')
+            self.ship.image = pygame.transform.scale(self.ship.image, (50, 50))
+            print("Debug mode OFF - Normal gameplay resumed")
+        
+        # Reset enemy fleet when toggling debug mode
         if self.debug_mode:
             self.enemies.empty()
         else:
             self._create_fleet()
-        print(f"Debug mode set to {self.debug_mode}")
 
     def _display_game_over_screen(self):
         """Display Game Over screen with options to restart or quit."""
@@ -120,68 +133,45 @@ class AlienInvasion:
         self.ship.moving_right = False
         self.ship.moving_left = False
 
-
-
-
-    def run_game(self):
-        """Start the main loop for the game."""
-        while True:
-            if not self.game_over:
-                self._check_events()
-                self.ship.update()
-                self._update_bullets()
-                self._update_enemies()
-                self.powerups.update()  # Update power-ups position
-
-                # Check collisions via the new _check_collisions() method
-                self._check_collisions()
-                
-                self._update_screen()
-            else:
-                # If the game is over, display the game over screen
-                self._display_game_over_screen()
-
-
-
-            # Randomly spawn a power-up
-            if random.randint(1, 500) == 1:  # Adjust the number to control frequency
-                self._spawn_powerup()
-
-            # Update and check collisions with enemy bullets
-            self.enemy_bullets.update()  # Update the position of enemy bullets
-
-            # Call to fire an enemy bullet
-            self._fire_enemy_bullet()  # Ensure enemies fire bullets periodically
-
-            # Remove enemy bullets that move off the bottom of the screen
-            for bullet in self.enemy_bullets.copy():
-                if bullet.rect.top >= self.settings.screen_height:
-                    self.enemy_bullets.remove(bullet)
-
-            self._update_screen()
-
+    # In alien_invasion.py, update the _check_collisions method:
     def _check_collisions(self):
         """Handle all collision detections and reactions."""
-        # Check for collisions between enemy bullets and the ship
-        if pygame.sprite.spritecollideany(self.ship, self.enemy_bullets):
-            self.ui.update_lives(-1)
-            if self.ui.lives <= 0:
-                self.game_over = True  # End the game
+        if not self.debug_mode:
+            # Check for collisions between enemy bullets and the ship
+            if pygame.sprite.spritecollideany(self.ship, self.enemy_bullets):
+                if self.ship.take_damage(10):  # Regular bullet damage
+                    if self.ship.current_health <= 0:
+                        self.game_over = True
 
-        # Check for collisions between enemies and the ship
-        if pygame.sprite.spritecollideany(self.ship, self.enemies):
-            self.ui.update_lives(-1)
-            if self.ui.lives <= 0:
-                self.game_over = True  # End the game
+            # Check for collisions between enemies and the ship
+            enemy_collision = pygame.sprite.spritecollideany(self.ship, self.enemies)
+            if enemy_collision:
+                # Different damage for different enemy types
+                damage = {
+                    'grunt': 15,
+                    'scout': 20,
+                    'bruiser': 30
+                }.get(enemy_collision.enemy_type, 15)
+                
+                if self.ship.take_damage(damage):
+                    if self.ship.current_health <= 0:
+                        self.game_over = True
 
-        # Check for collisions between power-ups and the ship
+        # Always check for power-up collisions
         powerup_collision = pygame.sprite.spritecollideany(self.ship, self.powerups)
         if powerup_collision:
             if powerup_collision.power_type == 'extra_life':
-                self.ui.update_lives(1)  # Add an extra life
+                self.ship.heal(30)  # Heal 30 health points
             elif powerup_collision.power_type == 'fast_fire':
-                pass  # Implement fast-firing logic if needed
-            powerup_collision.kill()  # Remove the power-up after it’s collected
+                # Implement fast-firing logic here
+                pass
+            powerup_collision.kill()
+
+        # Check for bullet-enemy collisions
+        collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
+        if collisions:
+            for enemies_hit in collisions.values():
+                self.ui.update_score(len(enemies_hit) * 10)
 
 
 
@@ -196,19 +186,14 @@ class AlienInvasion:
         """Update images on the screen and flip to the new screen."""
         self.screen.fill(self.settings.bg_color)
         self.ship.blitme()
-        for bullet in self.bullets.sprites():
-            bullet.draw_bullet()
+        self.bullets.draw(self.screen)         # This replaces your bullet for loop
         self.enemies.draw(self.screen)
+        self.enemy_bullets.draw(self.screen)   # This replaces your enemy bullet for loop
+        self.powerups.draw(self.screen)        # This replaces your powerup for loop
         
-        # Draw each enemy bullet
-        for bullet in self.enemy_bullets.sprites():
-            bullet.draw_bullet()
+        # Update UI with ship health
+        self.ui.draw(self.screen, self.ship)
         
-        # Draw each power-up
-        for powerup in self.powerups.sprites():
-            powerup.draw()
-
-        self.ui.draw(self.screen)  # Draw UI elements like score and lives
         pygame.display.flip()
 
 
@@ -320,17 +305,8 @@ class AlienInvasion:
             for row_number in range(number_rows):
                 for enemy_number in range(number_enemies_x):
                     self._create_enemy(enemy_number, row_number)
-
-
-        # Create the full fleet of enemies
-        for row_number in range(number_rows):
-            for enemy_number in range(number_enemies_x):
-                self._create_enemy(enemy_number, row_number)
-                # Add the print statement here
-                print(f"Row: {row_number}, Enemy: {enemy_number}")
-                print(f"DEBUG: Total enemies in fleet: {len(self.enemies)}")
-
-
+                    print(f"Row: {row_number}, Enemy: {enemy_number}")
+                    print(f"DEBUG: Total enemies in fleet: {len(self.enemies)}")
 
     def _create_enemy(self, enemy_number, row_number):
         """Create an enemy and place it in the row."""
