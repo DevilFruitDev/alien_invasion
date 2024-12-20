@@ -1,6 +1,6 @@
 import random
 import pygame
-import  sys
+import sys
 from settings import Settings
 from ui import UI
 from ship import Ship
@@ -18,6 +18,7 @@ class AlienInvasion:
 
         # Initialize game elements
         self.ui = UI()
+        self.enemy_count = 0  # Add this counter
         self.ship = Ship(self)
         self.clock = pygame.time.Clock()
         self.start_ticks = pygame.time.get_ticks()
@@ -32,6 +33,7 @@ class AlienInvasion:
         self._create_fleet()
 
     def run_game(self):
+        """Main game loop."""
         while True:
             if not self.game_over:
                 self._process_input()
@@ -42,7 +44,7 @@ class AlienInvasion:
             pygame.display.flip()
 
     def _process_input(self):
-        """ Handle all user inputs or events. """
+        """Handle all user inputs or events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
@@ -52,7 +54,7 @@ class AlienInvasion:
                 self._check_keyup_events(event)
 
     def _update_game(self):
-        """ Update all game mechanics. """
+        """Update all game mechanics."""
         seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000
         self.ship.update()
         self._update_bullets()
@@ -65,202 +67,15 @@ class AlienInvasion:
         self.clock.tick(self.settings.fps)
 
     def _render(self):
-        """ Render all game elements. """
+        """Render all game elements."""
         self.screen.fill(self.settings.bg_color)
-        self.ship.blitme()
+        # Instead of self.ship.blitme(), use this:
+        self.screen.blit(self.ship.image, self.ship.rect)  # Draw the ship
         self.bullets.draw(self.screen)
         self.enemies.draw(self.screen)
         self.enemy_bullets.draw(self.screen)
         self.powerups.draw(self.screen)
-        self.ui.draw(self.screen, self.ship)  # Modified this line to pass the ship
-
-    def toggle_debug_mode(self):
-        """Enhanced toggle debug mode with visual indicator."""
-        self.debug_mode = not self.debug_mode
-        
-        # Visual feedback for debug mode
-        if self.debug_mode:
-            # Change ship color or add visual indicator
-            self.ship.image.fill((0, 255, 0), special_flags=pygame.BLEND_RGB_ADD)
-            print("Debug mode ON - Invulnerability activated")
-        else:
-            # Restore original ship appearance
-            self.ship.image = pygame.image.load('C:\\Users\\mhspi\\Desktop\\PYgame\\Game Assets\\ship.bmp.png')
-            self.ship.image = pygame.transform.scale(self.ship.image, (50, 50))
-            print("Debug mode OFF - Normal gameplay resumed")
-        
-        # Reset enemy fleet when toggling debug mode
-        if self.debug_mode:
-            self.enemies.empty()
-        else:
-            self._create_fleet()
-
-    def _display_game_over_screen(self):
-        """Display Game Over screen with options to restart or quit."""
-        self.screen.fill((0, 0, 0))
-        font = pygame.font.Font(None, 74)
-        text = font.render("Game Over", True, (255, 0, 0))
-        self.screen.blit(text, (self.settings.screen_width // 2 - text.get_width() // 2,
-                                self.settings.screen_height // 3))
-        font_small = pygame.font.Font(None, 36)
-        restart_text = font_small.render("Press R to Restart or Q to Quit", True, (255, 255, 255))
-        self.screen.blit(restart_text, (self.settings.screen_width // 2 - restart_text.get_width() // 2,
-                                        self.settings.screen_height // 2))
-        pygame.display.flip()
-
-        while self.game_over:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type is pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        self._restart_game()
-                    elif event.key == pygame.K_q:
-                        pygame.quit()
-                        sys.exit()
-
-    def _restart_game(self):
-        """Reset the game to start fresh."""
-        self.game_over = False
-        self.ui = UI()
-        self.enemies.empty()
-        self.bullets.empty()
-        self.powerups.empty()
-        self.enemy_bullets.empty()
-        self._create_fleet()
-        self.ship = Ship(self)  # Reinitialize the ship and reset movement flags
-        self.ship.moving_right = False
-        self.ship.moving_left = False
-
-    # In alien_invasion.py, update the _check_collisions method:
-    def _check_collisions(self):
-        """Handle all collision detections and reactions."""
-        if not self.debug_mode:
-            # Check for collisions between enemy bullets and the ship
-            if pygame.sprite.spritecollideany(self.ship, self.enemy_bullets):
-                if self.ship.take_damage(10):  # Regular bullet damage
-                    if self.ship.current_health <= 0:
-                        self.game_over = True
-
-            # Check for collisions between enemies and the ship
-            enemy_collision = pygame.sprite.spritecollideany(self.ship, self.enemies)
-            if enemy_collision:
-                # Different damage for different enemy types
-                damage = {
-                    'grunt': 15,
-                    'scout': 20,
-                    'bruiser': 30
-                }.get(enemy_collision.enemy_type, 15)
-                
-                if self.ship.take_damage(damage):
-                    if self.ship.current_health <= 0:
-                        self.game_over = True
-
-        # Always check for power-up collisions
-        powerup_collision = pygame.sprite.spritecollideany(self.ship, self.powerups)
-        if powerup_collision:
-            if powerup_collision.power_type == 'extra_life':
-                self.ship.heal(30)  # Heal 30 health points
-            elif powerup_collision.power_type == 'fast_fire':
-                # Implement fast-firing logic here
-                pass
-            powerup_collision.kill()
-
-        # Check for bullet-enemy collisions
-        collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
-        if collisions:
-            for enemies_hit in collisions.values():
-                self.ui.update_score(len(enemies_hit) * 10)
-
-
-
-    def _fire_enemy_bullet(self):
-        """Randomly fire a bullet from an enemy."""
-        if self.enemies and random.randint(1, 100) == 10:  # Adjust probability for firing
-            firing_enemy = random.choice(self.enemies.sprites())
-            new_bullet = EnemyBullet(firing_enemy.rect.centerx, firing_enemy.rect.bottom, self.screen)
-            self.enemy_bullets.add(new_bullet)
-
-    def _update_screen(self):
-        """Update images on the screen and flip to the new screen."""
-        self.screen.fill(self.settings.bg_color)
-        self.ship.blitme()
-        self.bullets.draw(self.screen)         # This replaces your bullet for loop
-        self.enemies.draw(self.screen)
-        self.enemy_bullets.draw(self.screen)   # This replaces your enemy bullet for loop
-        self.powerups.draw(self.screen)        # This replaces your powerup for loop
-        
-        # Update UI with ship health
         self.ui.draw(self.screen, self.ship)
-        
-        pygame.display.flip()
-
-
-  #update completed till today. 
-
-    def _spawn_powerup(self):
-        """Randomly spawn a power-up at a specified location."""
-        x = random.randint(20, self.settings.screen_width - 20)
-        y = 0  # Start from the top of the screen
-        power_type = random.choice(['extra_life', 'fast_fire'])  # Add different power-up types
-        powerup = PowerUp(self.screen, x, y, power_type)  # Only pass four arguments
-        self.powerups.add(powerup)
-
-
-
-
-    def _update_bullets(self):
-        """Update the position of the bullets and get rid of the old ones."""
-        self.bullets.update()
-
-        for bullet in self.bullets.copy():
-            if bullet.rect.bottom <= 0:
-                self.bullets.remove(bullet)
-
-        collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
-        if collisions:
-            for enemies_hit in collisions.values():
-                self.ui.update_score(len(enemies_hit) * 10)  # Example: 10 points per enemy
-
-    def _update_enemies(self):
-        """Update the position of all enemies in the fleet, unless in debug mode."""
-        if not self.debug_mode:  # Only update enemies if not in debug mode
-            self.enemies.update()
-            self._check_fleet_edges()
-
-
-    def _check_fleet_edges(self):
-        """Respond if any Grunts have reached an edge."""
-        for enemy in self.enemies.sprites():
-            if enemy.enemy_type == 'grunt' and enemy.check_edges():
-                self._change_fleet_direction()
-                break
-
-
-
-    def _change_fleet_direction(self):
-        """Drop the entire fleet and change their direction."""
-        for enemy in self.enemies.sprites():
-            if enemy.enemy_type == 'grunt':  # Only affect Grunts
-                enemy.rect.y += 20
-        self.settings.enemy_direction *= -1
-
-
-    def _check_events(self):
-        """Respond to keypresses and mouse events."""
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                self._check_keydown_events(event)
-            elif event.type == pygame.KEYUP:
-                self._check_keyup_events(event)
-
-    def _increase_speed(self):
-        """Increase the speed of the fleet after each wave or significant event."""
-        self.settings.enemy_speed *= 1.1  # Adjust this multiplier as needed for difficulty
-
 
     def _check_keydown_events(self, event):
         """Respond to key presses."""
@@ -288,48 +103,191 @@ class AlienInvasion:
             new_bullet = Bullet(self.screen, self.ship)
             self.bullets.add(new_bullet)
 
+    def _fire_enemy_bullet(self):
+        """Randomly fire a bullet from an enemy."""
+        if self.enemies and random.randint(1, 100) == 10:
+            firing_enemy = random.choice(self.enemies.sprites())
+            new_bullet = EnemyBullet(firing_enemy.rect.centerx, firing_enemy.rect.bottom, self.screen)
+            self.enemy_bullets.add(new_bullet)
+
+    def _update_bullets(self):
+        """Update the position of bullets and handle collisions."""
+        self.bullets.update()
+
+        # Remove bullets that have gone off screen
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+
+        # Handle bullet collisions
+        collisions = pygame.sprite.groupcollide(self.bullets, self.enemies, True, True)
+        if collisions:
+            for enemies_hit in collisions.values():
+                self.ui.update_score(len(enemies_hit) * 10)
+
+    def _update_enemies(self):
+        """Update the positions of all enemies in the fleet."""
+        if not self.debug_mode:
+            self._check_fleet_edges()
+            self.enemies.update()
+            
+            # Look for enemies hitting the bottom
+            screen_rect = self.screen.get_rect()
+            for enemy in self.enemies.sprites():
+                if enemy.rect.bottom >= screen_rect.bottom:
+                    # Treat this the same as if the ship got hit
+                    self.game_over = True
+                    break
+
     def _create_fleet(self):
-        """Create a fleet of enemies only if not in debug mode."""
-        if not self.debug_mode:  # Check if debug mode is active
-            # Calculate the number of enemies in a row and rows of enemies
-            enemy = Enemy(self, 'grunt')  # Temporary instance to get dimensions
+        """Create the fleet of enemies."""
+        if not self.debug_mode:
+            # Create an enemy and calculate how many fit in a row
+            enemy = Enemy(self)
             enemy_width, enemy_height = enemy.rect.size
-            available_space_x = self.settings.screen_width - (1.5 * enemy_width)
-            number_enemies_x = int(available_space_x // (1.5 * enemy_width))
+            available_space_x = self.settings.screen_width - (2 * enemy_width)
+            number_enemies_x = int(available_space_x // (2 * enemy_width))
 
+            # Determine number of rows that fit on screen
             ship_height = self.ship.rect.height
-            available_space_y = (self.settings.screen_height - (2 * enemy_height) - ship_height)
-            number_rows = int(available_space_y // (1.5 * enemy_height))
+            available_space_y = (self.settings.screen_height - 
+                            (3 * enemy_height) - ship_height)
+            number_rows = int(available_space_y // (2 * enemy_height))
 
-            # Create the full fleet of enemies
+            # Create the fleet
             for row_number in range(number_rows):
                 for enemy_number in range(number_enemies_x):
                     self._create_enemy(enemy_number, row_number)
-                    print(f"Row: {row_number}, Enemy: {enemy_number}")
-                    print(f"DEBUG: Total enemies in fleet: {len(self.enemies)}")
+                    
+            print(f"Created fleet with {len(self.enemies)} enemies")
 
     def _create_enemy(self, enemy_number, row_number):
         """Create an enemy and place it in the row."""
-        enemy_type = random.choice(['grunt', 'scout', 'bruiser'])
-        print(f"DEBUG: Creating enemy of type {enemy_type} at Row: {row_number}, Enemy: {enemy_number}")
-        enemy = Enemy(
-            ai_game=self,
-            enemy_type=enemy_type
-        )
-        # Position the enemy
-        enemy.rect.x = 50 + enemy_number * (enemy.rect.width + 10)
-        enemy.rect.y = 50 + row_number * (enemy.rect.height + 10)
+        enemy = Enemy(self)
+        enemy_width, enemy_height = enemy.rect.size
+        
+        # Calculate position
+        enemy.x = enemy_width + 2 * enemy_width * enemy_number
+        enemy.rect.x = enemy.x
+        enemy.rect.y = enemy_height + 2 * enemy_height * row_number
+        
         self.enemies.add(enemy)
 
+    def _check_fleet_edges(self):
+        """Respond appropriately if any enemies have reached an edge."""
+        for enemy in self.enemies.sprites():
+            if enemy.check_edges():
+                self._change_fleet_direction()
+                break
 
-        # Position the enemy based on its number and row
-        enemy.rect.x = 50 + enemy_number * (enemy.rect.width + 10)
-        enemy.rect.y = 50 + row_number * (enemy.rect.height + 10)
+    def _change_fleet_direction(self):
+        """Drop the entire fleet and change the fleet's direction."""
+        for enemy in self.enemies.sprites():
+            enemy.rect.y += self.settings.enemy_drop_speed
+        self.settings.enemy_direction *= -1
 
-        # Add the enemy to the group
-        self.enemies.add(enemy)
 
-        print(f"Created {enemy_type} at ({enemy.rect.x}, {enemy.rect.y})")
+    def _spawn_powerup(self):
+        """Spawn a random power-up."""
+        x = random.randint(20, self.settings.screen_width - 20)
+        y = 0
+        power_type = random.choice(['extra_life', 'fast_fire'])
+        powerup = PowerUp(self.screen, x, y, power_type)
+        self.powerups.add(powerup)
+
+    def _check_collisions(self):
+        """Handle all collision detection."""
+        if not self.debug_mode:
+            # Ship-enemy bullet collisions
+            if pygame.sprite.spritecollideany(self.ship, self.enemy_bullets):
+                if self.ship.take_damage(10):
+                    if self.ship.current_health <= 0:
+                        self.game_over = True
+
+            # Ship-enemy collisions
+            enemy_collision = pygame.sprite.spritecollideany(self.ship, self.enemies)
+            if enemy_collision:
+                damage = {
+                    'grunt': 15,
+                    'scout': 20,
+                    'bruiser': 30
+                }.get(enemy_collision.enemy_type, 15)
+                
+                if self.ship.take_damage(damage):
+                    if self.ship.current_health <= 0:
+                        self.game_over = True
+
+        # Power-up collisions
+        powerup_collision = pygame.sprite.spritecollideany(self.ship, self.powerups)
+        if powerup_collision:
+            if powerup_collision.power_type == 'extra_life':
+                self.ship.heal(30)
+            elif powerup_collision.power_type == 'fast_fire':
+                pass  # Implement fast-fire logic
+            powerup_collision.kill()
+
+    def toggle_debug_mode(self):
+        """Toggle debug mode."""
+        self.debug_mode = not self.debug_mode
+        
+        if self.debug_mode:
+            self.ship.image.fill((0, 255, 0), special_flags=pygame.BLEND_RGB_ADD)
+            print("Debug mode ON - Invulnerability activated")
+        else:
+            # Make sure this path matches your actual file structure
+            try:
+                self.ship.image = pygame.image.load('C:\\Users\\mhspi\\Desktop\\PYgame\\assets\\PNG_Parts&Spriter_Animation\\Ship1\\Ship1.png').convert_alpha()
+                self.ship.image = pygame.transform.scale(self.ship.image, (64, 64))
+            except FileNotFoundError:
+                print("Warning: Could not load ship sprite, using default")
+                # Create a default colored rectangle if sprite can't be loaded
+                self.ship.image = pygame.Surface((64, 64))
+                self.ship.image.fill((0, 255, 0))
+            print("Debug mode OFF - Normal gameplay resumed")
+        
+        if self.debug_mode:
+            self.enemies.empty()
+        else:
+            self._create_fleet()
+
+    def _display_game_over_screen(self):
+        """Show game over screen."""
+        self.screen.fill((0, 0, 0))
+        font = pygame.font.Font(None, 74)
+        text = font.render("Game Over", True, (255, 0, 0))
+        restart_text = pygame.font.Font(None, 36).render(
+            "Press R to Restart or Q to Quit", True, (255, 255, 255))
+        
+        self.screen.blit(text, (self.settings.screen_width // 2 - text.get_width() // 2,
+                               self.settings.screen_height // 3))
+        self.screen.blit(restart_text, (self.settings.screen_width // 2 - restart_text.get_width() // 2,
+                                      self.settings.screen_height // 2))
+        pygame.display.flip()
+
+        while self.game_over:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self._restart_game()
+                    elif event.key == pygame.K_q:
+                        pygame.quit()
+                        sys.exit()
+
+    def _restart_game(self):
+        """Reset the game state."""
+        self.game_over = False
+        self.ui = UI()
+        self.enemies.empty()
+        self.bullets.empty()
+        self.powerups.empty()
+        self.enemy_bullets.empty()
+        self._create_fleet()
+        self.ship = Ship(self)
+        self.ship.moving_right = False
+        self.ship.moving_left = False
 
 if __name__ == '__main__':
     ai = AlienInvasion()
